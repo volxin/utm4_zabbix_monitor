@@ -1,0 +1,160 @@
+zabbix_export:
+  version: '5.2'
+  date: '2021-04-04T13:05:28Z'
+  groups:
+    -
+      name: 'UTM Group'
+  templates:
+    -
+      template: Template_UTM_EGAIS
+      name: Template_UTM_EGAIS
+      description: 'Мониторинг УТМ и сертификатов ЕГАИС'
+      groups:
+        -
+          name: 'UTM Group'
+      applications:
+        -
+          name: 'EGAIS Certificate'
+        -
+          name: UTM
+      items:
+        -
+          name: 'Неотправленные данные EGAIS'
+          key: EGAIS.EGAIScheckInfo
+          delay: 1m;wd1-5h7-17
+          history: 30d
+          trends: '0'
+          value_type: TEXT
+          applications:
+            -
+              name: 'EGAIS Certificate'
+          preprocessing:
+            -
+              type: REGEX
+              parameters:
+                - 'null'
+                - '0'
+          triggers:
+            -
+              expression: '{last(0)}>11'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: '{last(0)}=0'
+              name: 'На {HOST.NAME}  чеки не отправляются в ЕГАИС уже {ITEM.LASTVALUE} часов'
+              priority: HIGH
+        -
+          name: 'Дата окончания GOST'
+          key: EGAIS.EGAISGOSTDate
+          units: d
+          applications:
+            -
+              name: 'EGAIS Certificate'
+          triggers:
+            -
+              expression: '{last(0)}<30'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: '{last(0)}>30'
+              name: 'GOST До окончания срока действия сертификата на {HOST.NAME} осталось меньше {ITEM.LASTVALUE} дней'
+              priority: HIGH
+        -
+          name: 'Действие лицензии EGAIS'
+          key: EGAIS.EGAISlicense
+          trends: '0'
+          value_type: TEXT
+          applications:
+            -
+              name: 'EGAIS Certificate'
+          preprocessing:
+            -
+              type: REGEX
+              parameters:
+                - 'true'
+                - Действует
+          triggers:
+            -
+              expression: '{diff()}=1'
+              name: 'Действие лицензии EGAIS'
+              priority: HIGH
+        -
+          name: 'FSRAR ID'
+          key: EGAIS.EGAISownerId
+          delay: 1d;wd1-5h7-17
+          applications:
+            -
+              name: 'EGAIS Certificate'
+        -
+          name: 'Дата окончания EGAIS'
+          key: EGAIS.EGAISRSADate
+          units: d
+          applications:
+            -
+              name: 'EGAIS Certificate'
+          triggers:
+            -
+              expression: '{last(0)}<30'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: '{last(0)}>30'
+              name: 'EGAIS До окончания срока действия сертификата на {HOST.NAME} осталось меньше {ITEM.LASTVALUE} дней'
+              priority: HIGH
+        -
+          name: 'Ошибки EGAIS'
+          key: EGAIS.EGAISrsaError
+          delay: 30s;wd1-7h8-22
+          history: 30d
+          trends: '0'
+          value_type: TEXT
+          applications:
+            -
+              name: 'EGAIS Certificate'
+          triggers:
+            -
+              expression: '{strlen()}>1'
+              name: 'На УТМ возникли ошибки: {ITEM.LASTVALUE}'
+              priority: HIGH
+        -
+          name: 'UTM Version'
+          key: UTM.UTMversion
+          delay: 1d
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          applications:
+            -
+              name: UTM
+        -
+          name: 'UTM web-доступ (сек)'
+          key: 'web.page.perf[127.0.0.1,,8080]'
+          delay: 2m
+          history: 7d
+          trends: 30d
+          value_type: FLOAT
+          units: s
+          applications:
+            -
+              name: UTM
+          valuemap:
+            name: zabbix.host.available
+          request_method: POST
+          triggers:
+            -
+              expression: '{last(0)}=0'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: '{last(0)}>0'
+              name: 'УТМ на {HOST.NAME} недоступна'
+              priority: DISASTER
+      macros:
+        -
+          macro: '{$UTM_VERSION}'
+          value: 4.0.2
+  value_maps:
+    -
+      name: zabbix.host.available
+      mappings:
+        -
+          value: '0'
+          newvalue: 'not available'
+        -
+          value: '1'
+          newvalue: available
+        -
+          value: '2'
+          newvalue: unknown
